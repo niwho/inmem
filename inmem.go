@@ -10,6 +10,7 @@ import (
 // Cache of things.
 type Cache interface {
 	Add(key, value interface{}, expiresAt time.Time)
+	AddIfNotExist(key, value interface{}, expiresAt time.Time) bool
 	Get(key interface{}) (interface{}, bool)
 	Remove(key interface{})
 	Len() int
@@ -40,6 +41,10 @@ func NewUnlocked(size int) Cache {
 		lru:   list.New(),
 		items: make(map[interface{}]*list.Element),
 	}
+}
+
+func (c *cache) AddIfNotExist(key, value interface{}, expiresAt time.Time) bool {
+	return false
 }
 
 func (c *cache) Add(key, value interface{}, expiresAt time.Time) {
@@ -125,6 +130,17 @@ func (l *lockedCache) Add(key, value interface{}, expiresAt time.Time) {
 	l.m.Lock()
 	l.c.Add(key, value, expiresAt)
 	l.m.Unlock()
+}
+
+// false 表示key不存在，进行add操作
+func (l *lockedCache) AddIfNotExist(key, value interface{}, expiresAt time.Time) bool {
+	l.m.Lock()
+	_, f := l.c.Get(key)
+	if !f {
+		l.c.Add(key, value, expiresAt)
+	}
+	l.m.Unlock()
+	return f
 }
 
 func (l *lockedCache) Get(key interface{}) (interface{}, bool) {

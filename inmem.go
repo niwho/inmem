@@ -11,6 +11,7 @@ import (
 type Cache interface {
 	Add(key, value interface{}, expiresAt time.Time)
 	AddIfNotExist(key, value interface{}, expiresAt time.Time) bool
+	IncreaseKey(key interface{}, expiresAt time.Time)
 	Get(key interface{}) (interface{}, bool)
 	Remove(key interface{})
 	Len() int
@@ -45,6 +46,9 @@ func NewUnlocked(size int) Cache {
 
 func (c *cache) AddIfNotExist(key, value interface{}, expiresAt time.Time) bool {
 	return false
+}
+
+func (l *cache) IncreaseKey(key interface{}, expiresAt time.Time) {
 }
 
 func (c *cache) Add(key, value interface{}, expiresAt time.Time) {
@@ -141,6 +145,18 @@ func (l *lockedCache) AddIfNotExist(key, value interface{}, expiresAt time.Time)
 	}
 	l.m.Unlock()
 	return f
+}
+
+func (l *lockedCache) IncreaseKey(key interface{}, expiresAt time.Time) {
+	l.m.Lock()
+	v, f := l.c.Get(key)
+	var cnt int = 1
+	if f {
+		cc, _ := v.(int)
+		cnt += cc
+	}
+	l.c.Add(key, cnt, expiresAt)
+	l.m.Unlock()
 }
 
 func (l *lockedCache) Get(key interface{}) (interface{}, bool) {
